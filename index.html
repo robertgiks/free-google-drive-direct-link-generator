@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Drive Direct Link Generator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Use Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Google Drive Direct Link Generator</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Paste any shareable Google Drive link to create a direct download link.</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="space-y-4">
+            <label for="gdrive-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Enter Google Drive Shareable Link:</label>
+            <input type="url" id="gdrive-url" placeholder="https://drive.google.com/file/d/..." class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" autocomplete="off">
+            <button id="generate-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Generate Direct Link
+            </button>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result-container" class="mt-8 hidden">
+            <label for="direct-link" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Your Direct Download Link:</label>
+            <div class="mt-2 flex flex-col sm:flex-row items-center gap-2">
+                <input type="text" id="direct-link" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg" readonly>
+                <button id="copy-btn" class="w-full sm:w-auto flex-shrink-0 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+                    Copy Link
+                </button>
+            </div>
+        </div>
+        
+        <!-- Error Message Box -->
+        <div id="error-message" class="mt-6 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hidden">
+            <p><strong>Error:</strong> Could not extract File ID. Please check the URL and make sure it's a valid, shareable Google Drive link.</p>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM Element References
+        const generateBtn = document.getElementById('generate-btn');
+        const gdriveUrlInput = document.getElementById('gdrive-url');
+        const resultContainer = document.getElementById('result-container');
+        const directLinkInput = document.getElementById('direct-link');
+        const copyBtn = document.getElementById('copy-btn');
+        const errorMessage = document.getElementById('error-message');
+
+        // Base URL for the direct download
+        const BASE_URL = 'https://drive.usercontent.google.com/download?id=';
+
+        /**
+         * Extracts the Google Drive file ID from various URL formats.
+         * @param {string} url - The Google Drive URL.
+         * @returns {string|null} The extracted file ID or null if not found.
+         */
+        function extractFileId(url) {
+            let fileId = null;
+            // Regex to find the file ID in different Google Drive URL formats.
+            // It looks for a long string of letters, numbers, hyphens, and underscores.
+            // Formats covered:
+            // - /file/d/FILE_ID/...
+            // - /open?id=FILE_ID
+            // - /uc?id=FILE_ID
+            // - /document/d/FILE_ID/...
+            const regex = /(?:(?:\/d\/)|(?:id=))([a-zA-Z0-9_-]{25,})/;
+            const match = url.match(regex);
+            
+            if (match && match[1]) {
+                fileId = match[1];
+            }
+            return fileId;
+        }
+
+        /**
+         * Handles the click event for the generate button.
+         */
+        function handleGenerateClick() {
+            const userUrl = gdriveUrlInput.value.trim();
+            
+            // Hide previous results/errors
+            resultContainer.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+
+            if (!userUrl) {
+                errorMessage.querySelector('p').innerHTML = "<strong>Error:</strong> Please enter a URL.";
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            const fileId = extractFileId(userUrl);
+
+            if (fileId) {
+                // Construct the new direct link
+                const directLink = `${BASE_URL}${fileId}`;
+                directLinkInput.value = directLink;
+                resultContainer.classList.remove('hidden');
+                // Reset copy button text
+                copyBtn.textContent = 'Copy Link';
+                copyBtn.classList.remove('bg-gray-500');
+                copyBtn.classList.add('bg-green-500');
+            } else {
+                // Show an error message if no ID was found
+                errorMessage.querySelector('p').innerHTML = "<strong>Error:</strong> Could not extract File ID. Please check the URL and make sure it's a valid, shareable Google Drive link.";
+                errorMessage.classList.remove('hidden');
+            }
+        }
+        
+        /**
+         * Copies the generated direct link to the user's clipboard.
+         */
+        function handleCopyClick() {
+            // Create a temporary textarea to hold the text and copy it
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = directLinkInput.value;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            try {
+                document.execCommand('copy');
+                // Provide visual feedback
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.remove('bg-green-500');
+                copyBtn.classList.add('bg-gray-500');
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+                alert('Failed to copy the link.');
+            }
+            document.body.removeChild(tempTextArea);
+        }
+
+        // Event Listeners
+        generateBtn.addEventListener('click', handleGenerateClick);
+        copyBtn.addEventListener('click', handleCopyClick);
+        
+        // Allow pressing Enter in the input field to trigger generation
+        gdriveUrlInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission
+                generateBtn.click();
+            }
+        });
+
+    </script>
+
+</body>
+</html>
